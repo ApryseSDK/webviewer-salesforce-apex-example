@@ -46,3 +46,12 @@ function receiveMessage(event) {
     }
   }
 }
+
+
+
+
+// Post message to LWC/parent app
+
+function saveDocument(payload) {
+  parent.postMessage({type: 'SAVE_DOCUMENT', payload }, '*');
+}

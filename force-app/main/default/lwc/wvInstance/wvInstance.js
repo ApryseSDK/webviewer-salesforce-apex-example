@@ -34,6 +34,27 @@ export default class WvInstance extends LightningElement {
 
   connectedCallback() {
     this.showErrorMessage = this.showErrorMessage.bind(this);
+
+    // Add event listener from WebViewer iframe
+    window.addEventListener('message', this.handleReceiveMessage.bind(this), false);
+  }
+  disconnectedCallback() {
+    // Remove event listener from WebViewer iframe
+    window.removeEventListener('message', this.handleReceiveMessage, true);
+  }
+
+  handleReceiveMessage(event) {
+    const me = this;
+    if (event.isTrusted && typeof event.data === 'object') {
+      switch (event.data.type) {
+        case 'SAVE_DOCUMENT':
+          // Call Apex API to save PDF to ContentVersion
+          console.log('Save PDF', event.data.payload)
+          break;
+        default:
+          break;
+      }
+    }
   }
 
   showErrorMessage(error) {
