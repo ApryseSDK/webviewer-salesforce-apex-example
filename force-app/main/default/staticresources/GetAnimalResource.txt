@@ -1,1 +1,0 @@
-{"animals": ["pesky porcupine", "hungry hippo", "squeaky squirrel"]}

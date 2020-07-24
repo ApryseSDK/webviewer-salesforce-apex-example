@@ -5,6 +5,9 @@ import libUrl from '@salesforce/resourceUrl/lib';
 import myfilesUrl from '@salesforce/resourceUrl/myfiles';
 /** ContentVersionController.getFileBlobById(id) Apex method */
 import getFileBlobById from '@salesforce/apex/ContentVersionController.getFileBlobById';
+
+/** ContentVersionController.createContenVersion(filename, base64Data, fileType, contentDocumentId) Apex method */
+import createContenVersion from '@salesforce/apex/ContentVersionController.createContenVersion';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import mimeTypes from './mimeTypes'
 
@@ -39,6 +42,7 @@ export default class WvInstance extends LightningElement {
     window.addEventListener('message', this.handleReceiveMessage.bind(this), false);
   }
   disconnectedCallback() {
+
     // Remove event listener from WebViewer iframe
     window.removeEventListener('message', this.handleReceiveMessage, true);
   }
@@ -49,7 +53,10 @@ export default class WvInstance extends LightningElement {
       switch (event.data.type) {
         case 'SAVE_DOCUMENT':
           // Call Apex API to save PDF to ContentVersion
-          console.log('Save PDF', event.data.payload)
+          console.log('Save PDF', event.data.payload.filename)
+          createContenVersion(event.data.payload).then((response) => {
+            me.iframeWindow.postMessage({type: 'DOCUMENT_SAVED', response }, '*')
+          }).catch(this.showErrorMessage);
           break;
         default:
           break;
@@ -125,7 +132,7 @@ export default class WvInstance extends LightningElement {
 
   openFile(Id) {
     getFileBlobById({ Id }).then(response => {
-      const  { Title, FileExtension, Content } = response
+      const  { Title, FileExtension, Content, ContentDocumentId } = response
 
       const filename = `${Title}.${FileExtension}`;
       var blob = new Blob([_base64ToArrayBuffer(Content)], {
@@ -136,7 +143,8 @@ export default class WvInstance extends LightningElement {
         blob: blob,
         filename: filename,
         extension: FileExtension,
-        documentId: this.contentVersionId,
+        contentVersionId: this.contentVersionId,
+        contentDocumentId: ContentDocumentId
       }
 
       this.iframeWindow.postMessage({type: 'OPEN_DOCUMENT_BLOB', payload }, '*')

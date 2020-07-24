@@ -26,6 +26,7 @@ window.CoreControls.setCustomFontURL('https://pdftron.s3.amazonaws.com/custom/ID
 
 
 
+
 window.addEventListener("message", receiveMessage, false);
 
 function receiveMessage(event) {
@@ -35,11 +36,23 @@ function receiveMessage(event) {
         event.target.readerControl.loadDocument(event.data.file)
         break;
       case 'OPEN_DOCUMENT_BLOB':
-        const { blob, extension, filename, documentId } = event.data.payload;
-        event.target.readerControl.loadDocument(blob, { extension, filename, documentId })
+        const { blob, extension, filename, contentVersionId, contentDocumentId } = event.data.payload;
+        docViewer.on('documentLoaded', function(e) {
+          // Save contentDocuemntId to use later during saving
+          docViewer.getDocument().__contentDocumentId = contentDocumentId;
+        })
+        event.target.readerControl.loadDocument(blob, { extension, filename, documentId: contentVersionId })
+
         break;
       case 'CLOSE_DOCUMENT':
         event.target.readerControl.closeDocument()
+        break;
+      case 'DOCUMENT_SAVED':
+        console.log('DOCUMENT_SAVED', event.data);
+        readerControl.showErrorMessage('Document saved!')
+        setTimeout(() => {
+          readerControl.closeElements(['errorModal', 'loadingModal'])
+        }, 2000)
         break;
       default:
         break;
@@ -49,30 +62,66 @@ function receiveMessage(event) {
 
 
 
+// ====================================
+// == Post message to LWC/parent app ==
+// ====================================
 
-// Post message to LWC/parent app
-
-async function saveDocument(payload) {
-  const doc = docViewer.getDocument();
-  const xfdfString = await docViewer.getAnnotationManager.exportAnnotations();
-  const data = await doc.getFileData({
-    // saves the document with annotations in it
-    xfdfString
+window.addEventListener('viewerLoaded', async function() {
+  // this will be called on keydown
+  readerControl.hotkeys.on('ctrl+s, command+s', e => {
+    e.preventDefault();
+    saveDocument();
   });
-  const arr = new Uint8Array(data);
-  const blob = new Blob([arr], { type: 'application/pdf' });
 
-  // Convert blob to base64 for ContentVersion
-  var reader = new FileReader();
-  reader.readAsDataURL(blob); 
-  reader.onloadend = function() {
-      var base64data = reader.result;                
-      console.log(base64data);
-      var payload = {
-        VersionData: base64data,
-        //...
+  readerControl.setHeaderItems(function(header) {
+    var myCustomButton = {
+      type: 'actionButton',
+      dataElement: 'saveDocumentButton',
+      title: 'tool.SaveDocument',
+      img: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>',
+      onClick: function() {
+        saveDocument();
       }
-      parent.postMessage({type: 'SAVE_DOCUMENT', payload }, '*'); // <---- post message to LWC
+    }
+    header.get('viewControlsButton').insertBefore(myCustomButton);
+  });
+});
+
+
+async function saveDocument() {
+  console.log('readerControl.saveAnnotations();');
+
+  var doc = docViewer.getDocument();
+  if (!doc) {
+    return;
   }
-  
+  readerControl.openElement('loadingModal');
+
+  var fileType = doc.getType()
+  var filename = doc.getFilename()
+  var xfdfString = await docViewer.getAnnotationManager().exportAnnotations();
+  var data = await doc.getFileData({
+    // saves the document with annotations in it
+    xfdfString: xfdfString
+  });
+
+  var binary = '';
+  var bytes = new Uint8Array( data );
+  var len = bytes.byteLength;
+  for (var i = 0; i < len; i++) {
+    binary += String.fromCharCode( bytes[ i ] );
+  }
+
+  var base64Data = window.btoa( binary );
+
+  var payload = {
+    title: filename.replace(/\.[^/.]+$/, ""),
+    filename,
+    base64Data,
+    fileType,
+    fileExtension: fileType,
+    contentDocumentId: doc.__contentDocumentId
+  }
+  console.log(payload);
+  parent.postMessage({type: 'SAVE_DOCUMENT', payload }, '*'); // <---- post message to LWC
 }
