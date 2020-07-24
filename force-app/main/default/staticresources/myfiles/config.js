@@ -52,6 +52,27 @@ function receiveMessage(event) {
 
 // Post message to LWC/parent app
 
-function saveDocument(payload) {
-  parent.postMessage({type: 'SAVE_DOCUMENT', payload }, '*');
+async function saveDocument(payload) {
+  const doc = docViewer.getDocument();
+  const xfdfString = await docViewer.getAnnotationManager.exportAnnotations();
+  const data = await doc.getFileData({
+    // saves the document with annotations in it
+    xfdfString
+  });
+  const arr = new Uint8Array(data);
+  const blob = new Blob([arr], { type: 'application/pdf' });
+
+  // Convert blob to base64 for ContentVersion
+  var reader = new FileReader();
+  reader.readAsDataURL(blob); 
+  reader.onloadend = function() {
+      var base64data = reader.result;                
+      console.log(base64data);
+      var payload = {
+        VersionData: base64data,
+        //...
+      }
+      parent.postMessage({type: 'SAVE_DOCUMENT', payload }, '*'); // <---- post message to LWC
+  }
+  
 }
