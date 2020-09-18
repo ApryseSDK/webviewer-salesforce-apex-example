@@ -41,7 +41,7 @@ public with sharing class ContentVersionController {
 
 ## Open Salesforce files in WebViewer
 
-In order to open base64 file in WebViewr, first we need to convert [base64 to Blob](https://www.pdftron.com/documentation/web/guides/basics/open/base64/) object in JavaScript and pass it to [`readerControl.loadDocument`](https://www.pdftron.com/api/web/WebViewerInstance.html#loadDocument__anchor)
+In order to open base64 file in WebViewer, first we need to convert [base64 to Blob](https://www.pdftron.com/documentation/web/guides/basics/open/base64/) object in JavaScript and pass it to [`readerControl.loadDocument`](https://www.pdftron.com/api/web/WebViewerInstance.html#loadDocument__anchor)
 
 Here is an example Lightning Web Component app with WebViewer and showing an example on how to use Apex class and converting base64 to Blob.
 
